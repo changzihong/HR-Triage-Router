@@ -1,62 +1,91 @@
 import streamlit as st
-import random
 import time
+import random
 
 # ------------------------- PAGE CONFIG -------------------------
-st.set_page_config(page_title="HR Triage Router (Demo)", page_icon="💜", layout="wide")
+st.set_page_config(page_title="HR Triage Router (AI Front Desk)", page_icon="🤖", layout="wide")
 
-# ------------------------- CUSTOM CSS -------------------------
+# ------------------------- ADVANCED CSS -------------------------
 st.markdown("""
 <style>
 body {
-    background-color: #f8f5ff;
+    background: linear-gradient(135deg, #f8f6ff, #f1ecff);
     font-family: 'Segoe UI', sans-serif;
-    color: #3b0066;
+    color: #2e004f;
 }
-h1, h2, h3 {
+h1, h2, h3, h4 {
     color: #4b0082;
 }
-.stButton > button {
-    background-color: #c5a3ff;
+.stButton>button {
+    background: linear-gradient(90deg, #a774ff, #8250ff);
     color: white;
     border-radius: 10px;
-    border: none;
-    font-weight: bold;
     padding: 0.6em 1.2em;
-    transition: all 0.3s ease-in-out;
+    font-weight: bold;
+    transition: 0.3s ease;
+    border: none;
 }
-.stButton > button:hover {
-    background-color: #a774ff;
+.stButton>button:hover {
+    background: linear-gradient(90deg, #b98fff, #a06eff);
     transform: scale(1.05);
 }
-.stTextInput > div > div > input {
-    border: 2px solid #d2b7ff;
-    border-radius: 8px;
+.query-card {
+    display: inline-block;
+    vertical-align: top;
+    background-color: #ffffff;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 3px 8px rgba(140, 82, 255, 0.15);
+    margin: 0 10px 10px 0;
+    border-left: 4px solid #a774ff;
+    width: 260px;
+    transition: transform 0.3s ease;
+}
+.query-card:hover {
+    transform: translateY(-2px);
+}
+.query-scroll {
+    white-space: nowrap;
+    overflow-x: auto;
+    padding: 10px 5px;
 }
 .category-box {
-    background-color: #ede3ff;
+    background-color: #f3eaff;
     padding: 12px;
     border-radius: 8px;
     border-left: 4px solid #a774ff;
-    margin-bottom: 10px;
-    box-shadow: 0 2px 6px rgba(155, 89, 182, 0.15);
+    box-shadow: 0px 2px 4px rgba(100,0,200,0.1);
 }
-.reply-box {
+.chat-box {
     background-color: #ffffff;
-    padding: 14px;
-    border-radius: 8px;
-    border-left: 4px solid #b67fff;
-    box-shadow: 0px 2px 6px rgba(0,0,0,0.08);
+    border-radius: 10px;
+    padding: 15px;
+    border: 1px solid #e0caff;
+    max-width: 85%;
+    animation: fadeIn 1s ease;
 }
-.fade-in {
-    animation: fadeIn 1s ease-in;
+.chat-human {
+    text-align: right;
+    margin: 10px 0;
+}
+.chat-ai {
+    text-align: left;
+    margin: 10px 0;
+}
+.metric-box {
+    background-color: #ede3ff;
+    padding: 12px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.08);
+    margin-bottom: 15px;
 }
 @keyframes fadeIn {
-    from {opacity: 0;}
-    to {opacity: 1;}
+    from {opacity: 0; transform: translateY(5px);}
+    to {opacity: 1; transform: translateY(0);}
 }
 .typing {
-    border-right: .15em solid #b67fff;
+    border-right: .15em solid #a774ff;
     white-space: nowrap;
     overflow: hidden;
 }
@@ -84,44 +113,45 @@ function typeEffect(elementId, text, speed=35){
 
 # ------------------------- SIMULATED DATA -------------------------
 sample_queries = [
-    "Hi, I haven’t received my salary yet. Can you check?",
-    "Where can I find the company leave policy?",
-    "My medical claim hasn’t been reimbursed for 2 months.",
-    "I want to update my bank details for payroll.",
-    "How many annual leaves do I have left?",
-    "My manager is asking about my bonus payout details.",
-    "Urgent: I was locked out of the HR portal, need help asap!"
+    {"sender": "employee1@company.com", "text": "Hi, I haven’t received my salary yet. Can you check?"},
+    {"sender": "employee2@company.com", "text": "Where can I find the company leave policy?"},
+    {"sender": "employee3@company.com", "text": "My medical claim hasn’t been reimbursed for 2 months."},
+    {"sender": "employee4@company.com", "text": "Urgent: I was locked out of the HR portal, need help asap!"},
+    {"sender": "employee5@company.com", "text": "Can I update my bank details for salary credit?"}
 ]
 
 faq_answers = {
-    "leave": "You can check your leave balance and apply via the HR self-service portal under 'My Leave'.",
-    "benefits": "You can view your benefits and claim submissions through the Benefits Portal.",
-    "payroll": "Payroll-related details are handled by the Payroll team. You can check pay slips in the HRIS system."
+    "leave": "You can view your leave policy and balance via the HR Self-Service Portal → My Leave.",
+    "benefits": "Check your benefits and medical claims in the Benefits Portal. Ensure your receipts are uploaded.",
+    "payroll": "Payroll queries are handled by our Payroll team. Please check your HRIS for payslip release status."
 }
 
 # ------------------------- HEADER -------------------------
-st.title("💜 HR Triage Router (Demo)")
-st.subheader("AI Front Desk Assistant for HR Support")
+st.title("💜 HR Triage Router — AI Front Desk Assistant")
+st.markdown("Empower your HR helpdesk with smart triage, instant replies, and escalation automation.")
+st.markdown("---")
 
-st.markdown("""
-This **AI-powered demo** shows how HR can use automation to triage mixed queries,  
-provide instant answers, and route urgent issues to the right team.
-""")
+# ------------------------- INCOMING QUERY VIEWER (TOP) -------------------------
+st.subheader("📥 Incoming Queries")
+st.markdown('<div class="query-scroll">', unsafe_allow_html=True)
 
-# ------------------------- SIDEBAR -------------------------
-st.sidebar.header("📬 HR Inbox Simulator")
-selected_query = st.sidebar.selectbox("Select an incoming query:", [""] + sample_queries)
-st.sidebar.markdown("💡 Choose a sample query to simulate AI routing.")
+for msg in sample_queries:
+    st.markdown(f"""
+    <div class="query-card">
+        <b>From:</b> {msg['sender']}<br>
+        <b>Message:</b><br>{msg['text']}
+    </div>
+    """, unsafe_allow_html=True)
 
-# ------------------------- MAIN LOGIC -------------------------
+st.markdown("</div>", unsafe_allow_html=True)
+
+selected_query = st.selectbox("🔍 Select a query to analyze:", [m["text"] for m in sample_queries])
+
+# ------------------------- AI ROUTING LOGIC -------------------------
 if selected_query:
-    with st.spinner("AI analyzing the message..."):
-        time.sleep(1.2)
+    with st.spinner("AI analyzing message..."):
+        time.sleep(1.3)
 
-    st.markdown(f"### Incoming Message")
-    st.write(f"💬 *{selected_query}*")
-
-    # Routing Logic
     if any(word in selected_query.lower() for word in ["salary", "bonus", "pay", "bank"]):
         category = "Payroll"
         team = "Payroll Support Team"
@@ -137,48 +167,60 @@ if selected_query:
     elif "urgent" in selected_query.lower() or "asap" in selected_query.lower():
         category = "Escalation"
         team = "HR Business Partner (HRBP)"
-        response = "⚠️ This message has been flagged as **urgent** and routed to HRBP."
+        response = "⚠️ This message has been marked urgent and sent to HRBP."
     else:
         category = "General"
         team = "HR Helpdesk"
-        response = "Your query has been received and logged. We'll respond shortly."
+        response = "Your query has been received. We'll route it to the right department."
 
-    # ------------------------- DISPLAY -------------------------
-    st.markdown(f"#### 🧩 Routed Category")
-    st.markdown(f"<div class='category-box fade-in'><b>Category:</b> {category}<br><b>Assigned To:</b> {team}</div>", unsafe_allow_html=True)
+    st.markdown("---")
+    st.subheader("🧠 AI Routing & Auto-Response")
+    st.markdown(f"<div class='category-box'><b>Category:</b> {category}<br><b>Assigned To:</b> {team}</div>", unsafe_allow_html=True)
 
-    st.markdown("#### 🤖 Suggested AI Reply")
+    st.markdown("##### 💬 Conversation Preview")
+    st.markdown(f"<div class='chat-human chat-box'>👩‍💼: {selected_query}</div>", unsafe_allow_html=True)
+
     unique_id = f"reply_{random.randint(1000,9999)}"
-    st.markdown(f"<div id='{unique_id}' class='reply-box typing fade-in'></div>", unsafe_allow_html=True)
+    st.markdown(f"<div id='{unique_id}' class='chat-ai chat-box typing'></div>", unsafe_allow_html=True)
 
-    # Inject JS typing effect dynamically
     st.markdown(f"""
     <script>
-    typeEffect("{unique_id}", `{response}`, 30);
+    typeEffect("{unique_id}", "🤖: {response}", 25);
     </script>
     """, unsafe_allow_html=True)
 
-    # ------------------------- ESCALATION OPTION -------------------------
-    if st.button("🚨 Mark as Urgent & Escalate"):
-        st.warning("This ticket has been escalated to HRBP.")
+    if st.button("🚨 Escalate to HRBP"):
+        st.warning("Escalation sent to HRBP successfully.")
         st.balloons()
 
-# ------------------------- ADD NEW QUERY -------------------------
+# ------------------------- METRICS DASHBOARD -------------------------
 st.markdown("---")
-st.markdown("### 💌 Submit a New HR Query")
+st.subheader("📊 Smart HR Dashboard (Demo Metrics)")
 
-user_query = st.text_input("Type your HR-related question (demo only):")
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.markdown("""
+    <div class='metric-box'>
+        <b>Queries Processed Today</b><br>
+        <h3>124</h3>
+        <progress value="85" max="100"></progress><br>
+        <small>85% Auto-Resolved</small>
+    </div>
+    """, unsafe_allow_html=True)
+with col2:
+    st.markdown("""
+    <div class='metric-box'>
+        <b>Avg Response Time</b><br>
+        <h3>1.8 min</h3>
+    </div>
+    """, unsafe_allow_html=True)
+with col3:
+    st.markdown("""
+    <div class='metric-box'>
+        <b>Escalations</b><br>
+        <h3>6 Today</h3>
+    </div>
+    """, unsafe_allow_html=True)
 
-if st.button("🔍 Analyze"):
-    if user_query.strip() == "":
-        st.error("Please enter a query.")
-    else:
-        st.success("Simulating AI routing... Check above sections for demo output.")
-        st.info("In a live version, this would connect to an LLM + Zendesk/Freshdesk integration.")
-
-# ------------------------- FOOTER -------------------------
-st.markdown("""
----
-💼 **Demo App by HR Team**  
-Built with 💜 using Streamlit | Phase 1 (UI + Interaction Prototype)
-""")
+st.markdown("---")
+st.markdown("💼 **Developed by HR Innovation Lab | Phase 1 – Advanced Dashboard Prototype** 💜")
